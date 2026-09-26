@@ -125,6 +125,40 @@
   .btnCancel{background:var(--chip);color:var(--ink);flex:.5!important}
   .req{color:var(--bad)}
 
+  /* Kirish: ism tanlash */
+  .ismlar{display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;margin-top:8px}
+  .ismlar button{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:14px;padding:15px;
+    font-size:17px;text-align:left;display:flex;align-items:center;gap:12px}
+  .ismlar button .av{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);
+    display:flex;align-items:center;justify-content:center;font-weight:700}
+  .kimman{font-size:18px;font-weight:600;margin-bottom:14px}
+  .orqa{margin-top:18px;background:none;border:0;color:#fff;opacity:.85;font-size:15px;text-decoration:underline}
+  /* Profil / admin */
+  .qator{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .qator:first-of-type{border-top:0}
+  .qator .ism{flex:1;font-weight:600}
+  .qator .ism small{display:block;font-weight:400;color:var(--mut);font-size:13px}
+  .btn{border:1px solid var(--line);background:var(--bg);color:var(--pri2);border-radius:10px;
+    padding:9px 12px;font-size:14px;white-space:nowrap}
+  .btn.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+  .btn.xavf{color:var(--bad)}
+  .btn.keng{width:100%;margin-top:10px;padding:12px;font-size:15px}
+  select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);
+    color:var(--ink);font-size:16px;font-family:inherit}
+  .yashirin{margin-top:8px}
+  .rol{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--mut);font-weight:500}
+  .rol.admin{background:#fde9a9;color:#7a5200}
+  .meta{font-size:13px;color:var(--mut);margin:0 0 8px 34px}
+  .fmeta{font-size:14px;line-height:1.6}
+  .fmeta b{color:var(--ink)}
+  .xsel{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;
+    padding:6px 10px;font-size:14px;width:auto}
+  .tz{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+  .tz:first-child{border-top:0}
+  .tz .v{color:var(--mut);font-size:13px}
+  .tz .e{color:var(--bad);text-decoration:line-through;word-break:break-word}
+  .tz .y{color:var(--ok);word-break:break-word}
+  .tz a{color:var(--pri2)}
   #toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#15202b;
     color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;
     max-width:90%;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none}
@@ -141,10 +175,18 @@
 <!-- ===== PIN ekrani ===== -->
 <section id="pinScr">
   <h2>Alizamon ishlar</h2>
-  <p>PIN-kodni kiriting</p>
-  <div class="dots" id="dots"></div>
-  <div id="pinMsg"></div>
-  <div class="pad" id="pad"></div>
+  <div id="ismTanlov" style="display:flex;flex-direction:column;align-items:center;width:100%">
+    <p>Kim kiryapti?</p>
+    <div class="ismlar" id="ismlar"><div style="opacity:.8">Yuklanmoqda…</div></div>
+  </div>
+  <div id="pinQism" class="hidden" style="display:flex;flex-direction:column;align-items:center">
+    <div class="kimman" id="kimman"></div>
+    <p>PIN-kodni kiriting</p>
+    <div class="dots" id="dots"></div>
+    <div id="pinMsg"></div>
+    <div class="pad" id="pad"></div>
+    <button class="orqa" onclick="ismTanla()">← Boshqa foydalanuvchi</button>
+  </div>
 </section>
 
 <!-- ===== Ro'yxat ===== -->
@@ -152,6 +194,7 @@
   <header>
     <h1>Ishlar ro'yxati</h1>
     <button onclick="yangila()">↻</button>
+    <button onclick="profilOch()" id="profBtn">👤</button>
     <button onclick="qulfla()">🔒</button>
   </header>
   <main>
@@ -173,6 +216,7 @@
   <main>
     <form id="f" onsubmit="return false" autocomplete="off">
       <input type="hidden" name="row">
+      <div class="card hidden" id="fMeta"></div>
       <div class="card">
         <div class="lg">Obyekt</div>
         <label>Obyekt manzili va nomlanishi <span class="req">*</span></label>
@@ -193,7 +237,8 @@
       <div class="card">
         <div class="lg">Buyurtmachi</div>
         <label>Buyurtmachi nomi</label>
-        <input name="buyurtmachi">
+        <input name="buyurtmachi" list="buyList" onchange="buyTanlandi(this)">
+        <datalist id="buyList"></datalist>
         <label>Bog'lanish telefoni</label>
         <input name="telefon" type="tel" inputmode="tel" placeholder="+998 __ ___ __ __">
       </div>
@@ -242,6 +287,51 @@
   </div>
 </section>
 
+<!-- ===== Profil / Admin ===== -->
+<section id="profilScr" class="hidden">
+  <header><h1>Profil</h1><button onclick="korsat('listScr')">✕</button></header>
+  <main>
+    <div class="card">
+      <div class="lg" id="pIsm"></div>
+      <div style="color:var(--mut);font-size:14px" id="pRol"></div>
+    </div>
+    <div class="card">
+      <div class="lg">Telegram eslatmalari</div>
+      <div id="tgHolat" style="font-size:14px;margin-top:6px"></div>
+      <button class="btn pri keng" id="tgBtn" onclick="tgUlash()">📨 Telegram'ni ulash</button>
+      <button class="btn keng hidden" id="tgTekBtn" onclick="tgTekshir()">✔ Ulanganini tekshirish</button>
+    </div>
+    <div class="card">
+      <div class="lg">PIN-kodni o'zgartirish</div>
+      <div class="row2">
+        <div><label>Eski PIN</label><input id="pEski" type="password" inputmode="numeric" maxlength="4"></div>
+        <div><label>Yangi PIN</label><input id="pYangi" type="password" inputmode="numeric" maxlength="4"></div>
+      </div>
+      <button class="btn keng" onclick="pinAlmash()">Saqlash</button>
+    </div>
+    <div class="card hidden" id="adminKarta">
+      <div class="lg">👥 Xodimlar</div>
+      <div id="xodimRoy" style="margin-top:6px"></div>
+      <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:4px">
+        <div class="lg" style="margin-top:8px">Yangi xodim qo'shish</div>
+        <label>Ism</label><input id="yIsm" placeholder="masalan: Anvar">
+        <div class="row2">
+          <div><label>PIN (4 raqam)</label><input id="yPin" inputmode="numeric" maxlength="4"></div>
+          <div><label>Rol</label><select id="yRol"><option value="xodim">Xodim</option><option value="admin">Admin</option></select></div>
+        </div>
+        <button class="btn pri keng" onclick="xodimQosh()">＋ Qo'shish</button>
+      </div>
+    </div>
+    <button class="btn keng xavf" onclick="qulfla()">🔒 Chiqish</button>
+  </main>
+</section>
+
+<!-- ===== Tarix (faqat admin) ===== -->
+<section id="tarixScr" class="hidden">
+  <header><h1 id="tTitle">O'zgarishlar tarixi</h1><button onclick="korsat('formScr')">✕</button></header>
+  <main><div class="card" id="tarixRoy"></div></main>
+</section>
+
 <div id="toast"></div>
 <div id="busy" class="hidden"><div></div></div>
 
@@ -252,7 +342,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzt8rACa66RkoR1VzCaA1oB
 const PIN_LEN = 4;            // PIN uzunligi — Code.gs dagi PIN_KOD bilan bir xil bo'lsin
 const AUTO_QULF_DAQ = 5;      // shuncha daqiqa harakatsizlikdan keyin qulflanadi
 
-let TOKEN = null, DATA = [], FILTR = 'hammasi', pin = '';
+let TOKEN = null, USER = null, DATA = [], FILTR = 'hammasi', XFILTR = '', pin = '', ISM = '';
 const $ = id => document.getElementById(id);
 const F = () => $('f').elements;
 
@@ -260,12 +350,15 @@ const F = () => $('f').elements;
 function toast(t, ms){ const e=$('toast'); e.textContent=t; e.classList.add('on');
   clearTimeout(toast._t); toast._t=setTimeout(()=>e.classList.remove('on'), ms||2500); }
 function band(on){ $('busy').classList.toggle('hidden', !on); }
-function korsat(id){ ['pinScr','listScr','formScr'].forEach(s=>$(s).classList.toggle('hidden', s!==id)); window.scrollTo(0,0); }
+function korsat(id){ ['pinScr','listScr','formScr','profilScr','tarixScr'].forEach(s=>$(s).classList.toggle('hidden', s!==id)); window.scrollTo(0,0); }
 function num(v){ if(v===''||v==null) return null; const n=Number(String(v).replace(/[^\d.-]/g,'')); return isNaN(n)?null:n; }
 function pul(n){ return n==null ? '—' : Math.round(n).toLocaleString('ru-RU').replace(/,/g,' ') + " so'm"; }
 function bugun(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
 function sanaUz(s){ if(!s) return ''; const p=s.split('-'); return p.length===3 ? p[2]+'.'+p[1]+'.'+p[0] : s; }
 function kunQoldi(s){ if(!s) return null; const a=new Date(s+'T00:00:00'), b=new Date(bugun()+'T00:00:00'); return Math.round((a-b)/864e5); }
+function saqlaMahal(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function olMahal(k){ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } }
+function adminmi(){ return USER && USER.rol==='admin'; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function server(fn, ...args){
@@ -298,16 +391,37 @@ function pinChiz(){ $('dots').innerHTML = Array.from({length:PIN_LEN},(_,i)=>`<s
   pinChiz();
 })();
 
+async function ismlarYukla(avto){
+  try {
+    const ro = await server('ismlar');
+    $('ismlar').innerHTML = ro.map(i=>`<button onclick="ismTanla('${esc(i).replace(/'/g,"\\'")}')"><span class="av">${esc(i[0]||'?')}</span>${esc(i)}</button>`).join('')
+      || '<div>Xodim topilmadi</div>';
+    const oxirgi = olMahal('ism');
+    if (avto && oxirgi && ro.includes(oxirgi)) ismTanla(oxirgi);
+  } catch(e) {
+    $('ismlar').innerHTML = `<div style="opacity:.9">Ulanib bo'lmadi: ${esc(e.message||e)}</div><button onclick="ismlarYukla(true)">↻ Qayta urinish</button>`;
+  }
+}
+function ismTanla(i){
+  ISM = i || ''; pin=''; pinChiz(); $('pinMsg').textContent='';
+  $('ismTanlov').classList.toggle('hidden', !!ISM);
+  $('pinQism').classList.toggle('hidden', !ISM);
+  $('kimman').textContent = ISM ? '👤 ' + ISM : '';
+  if (!ISM) ismlarYukla(false);
+}
+ismlarYukla(true);
+
 async function kirish(){
   band(true);
   try {
-    const r = await server('login', pin);
-    if (r.ok) { TOKEN=r.token; $('pinMsg').textContent=''; pin=''; pinChiz(); korsat('listScr'); yangila(); faollik(); }
+    const r = await server('login', ISM, pin);
+    if (r.ok) { TOKEN=r.token; USER={ism:r.ism, rol:r.rol, telegram:r.telegram}; saqlaMahal('ism', r.ism);
+      $('pinMsg').textContent=''; pin=''; pinChiz(); XFILTR=''; korsat('listScr'); yangila(); faollik(); }
     else { $('pinMsg').textContent=r.xabar; pin=''; pinChiz(); if(navigator.vibrate) navigator.vibrate(200); }
   } catch(e){ $('pinMsg').textContent='Ulanishda xato: '+(e.message||e); pin=''; pinChiz(); }
   band(false);
 }
-function qulfla(jim){ if(TOKEN && !jim) server('logout', TOKEN).catch(()=>{}); TOKEN=null; DATA=[]; $('list').innerHTML=''; korsat('pinScr'); }
+function qulfla(jim){ if(TOKEN && !jim) server('logout', TOKEN).catch(()=>{}); TOKEN=null; USER=null; DATA=[]; $('list').innerHTML=''; ismTanla(ISM); korsat('pinScr'); }
 
 let _qt; function faollik(){ clearTimeout(_qt); if(TOKEN) _qt=setTimeout(()=>{ qulfla(); toast('Avtomatik qulflandi'); }, AUTO_QULF_DAQ*60000); }
 ['click','keydown','touchstart','input'].forEach(ev=>document.addEventListener(ev, faollik, {passive:true}));
@@ -317,7 +431,7 @@ document.addEventListener('visibilitychange', ()=>{ if(document.hidden) window._
 /* ---------- Ro'yxat ---------- */
 async function yangila(){
   band(true);
-  try { DATA = await server('royxat', TOKEN); chiz(); } catch(e){ if(TOKEN) toast('Yuklab bo\'lmadi: '+(e.message||e)); }
+  try { DATA = await server('royxat', TOKEN); buyRoyxat(); chiz(); } catch(e){ if(TOKEN) toast('Yuklab bo\'lmadi: '+(e.message||e)); }
   band(false);
 }
 
@@ -352,10 +466,14 @@ function chiz(){
   if (bugungi.length) og += `<div class="ogoh bugun" onclick="FILTR='bugun';chiz()">🔔 Bugun muddati tugaydi: ${bugungi.length} ta ish<small>Ko'rish ›</small></div>`;
   if (kech) og += `<div class="ogoh otgan" onclick="FILTR='kechikkan';chiz()">⚠ Muddati o'tgan: ${kech} ta ish<small>Ko'rish ›</small></div>`;
   $('ogoh').innerHTML = og;
-  $('filters').innerHTML = FILTRLAR.map(([k,t])=>`<button class="${FILTR===k?'on':''}" onclick="FILTR='${k}';chiz()">${t}</button>`).join('');
+  const xodimlar = [...new Set(DATA.map(r=>r.kim).filter(Boolean))].sort();
+  const xsel = adminmi() && xodimlar.length>1
+    ? `<select class="xsel" onchange="XFILTR=this.value;chiz()"><option value="">👥 Hamma xodim</option>${xodimlar.map(x=>`<option ${XFILTR===x?'selected':''}>${esc(x)}</option>`).join('')}</select>` : '';
+  $('filters').innerHTML = xsel + FILTRLAR.map(([k,t])=>`<button class="${FILTR===k?'on':''}" onclick="FILTR='${k}';chiz()">${t}</button>`).join('');
 
   const rows = DATA.filter(r=>{
     const h = holat(r);
+    if (XFILTR && r.kim!==XFILTR) return false;
     if (FILTR==='jarayonda' && h.tugagan) return false;
     if (FILTR==='kechikkan' && !h.kechikkan) return false;
     if (FILTR==='qarz' && !h.qarz) return false;
@@ -376,7 +494,8 @@ function chiz(){
     const tel = String(r.telefon||'').replace(/[^\d+]/g,'');
     return `<div class="item ${m?m.cls:''}">
       <div class="top"><span class="no">${esc(r.n)}</span><span class="ttl">${esc(r.obyekt)}</span></div>
-      <div class="sub">${esc(r.buyurtmachi||'—')}${r.kelgan?' · '+sanaUz(r.kelgan):''}</div>
+      <div class="sub">${esc(r.buyurtmachi||'—')}${r.telefon?' · '+esc(r.telefon):''}</div>
+      <div class="meta">${adminmi()&&r.kim?'👤 '+esc(r.kim)+' · ':''}🕒 ${esc(r.yaratildi||sanaUz(r.kelgan))}${r.ozgardi?' · ✎ '+esc(r.ozgardi):''}</div>
       ${m?`<div class="mud ${m.cls}"><span>${m.chap}</span><small>${m.ong}</small></div>`:''}
       <div class="tags">${tags.join('')}</div>
       <div class="acts">
@@ -403,6 +522,12 @@ function ochForm(row){
     e.row.value = ''; e.kelgan.value = bugun(); e.shSana.value = '';
     joylashuv(false);
   }
+  const fm = $('fMeta');
+  if (r) {
+    fm.innerHTML = `<div class="fmeta">👤 Kiritgan: <b>${esc(r.kim||'—')}</b><br>🕒 Kiritilgan: <b>${esc(r.yaratildi||'—')}</b><br>✎ Oxirgi o'zgarish: <b>${esc(r.ozgardi||'—')}</b></div>`
+      + (adminmi() ? `<button type="button" class="btn keng" onclick="tarixOch(${r.row})">📜 O'zgarishlar tarixi</button>` : '');
+    fm.classList.remove('hidden');
+  } else fm.classList.add('hidden');
   $('faylJoriy').innerHTML = r && r.fayl && r.fayl.url
     ? `📄 <a href="${esc(r.fayl.url)}" target="_blank">${esc(r.fayl.nom||'Xulosa')}</a>`
     : 'Fayl yuklanmagan';
@@ -464,6 +589,115 @@ async function saqla(){
     korsat('listScr'); await yangila();
   } catch(err){ if(TOKEN) toast('Saqlanmadi: '+(err.message||err), 5000); }
   band(false);
+}
+
+/* ---------- Buyurtmachilar avtoto'ldirish ---------- */
+let BUY = {};
+function buyRoyxat(){
+  BUY = {};
+  DATA.forEach(r=>{ const n=String(r.buyurtmachi||'').trim(); if(n && (r.telefon||!BUY[n])) BUY[n]=r.telefon||BUY[n]||''; });
+  $('buyList').innerHTML = Object.keys(BUY).sort().map(n=>`<option value="${esc(n)}">`).join('');
+}
+function buyTanlandi(el){
+  const t = BUY[el.value.trim()]; const e=F();
+  if (t && !e.telefon.value.trim()) { e.telefon.value = t; toast('Telefon avtomatik qo\'yildi'); }
+}
+
+/* ---------- Tarix ---------- */
+async function tarixOch(row){
+  const r = DATA.find(x=>x.row===row);
+  $('tTitle').textContent = `№ ${r?r.n:''} — tarix`;
+  $('tarixRoy').innerHTML = 'Yuklanmoqda…'; korsat('tarixScr');
+  try {
+    const t = await server('tarix', TOKEN, row);
+    const qiymat = v => { const m=String(v).match(/^(.*) \| (https?:\/\/\S+)$/); return m ? `<a href="${esc(m[2])}" target="_blank">📄 ${esc(m[1])}</a>` : esc(v||'—'); };
+    $('tarixRoy').innerHTML = t.length ? t.map(x=>`<div class="tz"><div class="v">${esc(x.vaqt)} · 👤 ${esc(x.kim)}</div>
+      <b>${esc(x.maydon)}</b>${x.eski||x.yangi?`<div><span class="e">${qiymat(x.eski)}</span> → <span class="y">${qiymat(x.yangi)}</span></div>`:''}</div>`).join('')
+      : 'Hali o\'zgarish yo\'q';
+  } catch(e){ $('tarixRoy').textContent = 'Yuklab bo\'lmadi: '+(e.message||e); }
+}
+
+/* ---------- Profil ---------- */
+function profilOch(){
+  $('pIsm').textContent = '👤 ' + USER.ism;
+  $('pRol').textContent = adminmi() ? 'Admin — hamma ishlarni ko\'radi' : 'Xodim — faqat o\'z ishlarini ko\'radi';
+  tgChiz(); $('pEski').value=''; $('pYangi').value='';
+  $('adminKarta').classList.toggle('hidden', !adminmi());
+  korsat('profilScr');
+  if (adminmi()) xodimYukla();
+}
+function tgChiz(){
+  $('tgHolat').innerHTML = USER.telegram ? '✅ Ulangan — eslatmalar Telegram\'ga keladi' : '⚪ Ulanmagan';
+  $('tgBtn').textContent = USER.telegram ? '🔄 Telegram\'ni qayta ulash' : '📨 Telegram\'ni ulash';
+}
+async function tgUlash(){
+  band(true);
+  try {
+    const r = await server('telegramUlash', TOKEN);
+    $('tgTekBtn').classList.remove('hidden');
+    toast('Botda “Start” ni bosing, keyin shu yerga qayting', 5000);
+    window.open(r.havola, '_blank');
+  } catch(e){ toast('Xato: '+(e.message||e), 4000); }
+  band(false);
+}
+async function tgTekshir(jim){
+  try {
+    const r = await server('telegramTekshir', TOKEN);
+    USER.telegram = r.ulandi; tgChiz();
+    if (r.ulandi) { $('tgTekBtn').classList.add('hidden'); toast('✅ Telegram ulandi'); }
+    else if (!jim) toast('Hali ulanmadi — botda “Start” ni bosdingizmi?', 4000);
+  } catch(e){ if(!jim) toast('Xato: '+(e.message||e), 4000); }
+}
+document.addEventListener('visibilitychange', ()=>{
+  if (!document.hidden && TOKEN && !$('tgTekBtn').classList.contains('hidden')) tgTekshir(true);
+});
+async function pinAlmash(){
+  const a=$('pEski').value, b=$('pYangi').value;
+  if (!/^\d{4}$/.test(b)) { toast('Yangi PIN 4 ta raqam bo\'lsin'); return; }
+  band(true);
+  try { await server('pinOzgartir', TOKEN, a, b); toast('✅ PIN o\'zgartirildi'); $('pEski').value=''; $('pYangi').value=''; }
+  catch(e){ toast(e.message||String(e), 4000); }
+  band(false);
+}
+
+/* ---------- Admin: xodimlar ---------- */
+let XODIMLAR = [];
+async function xodimYukla(){
+  $('xodimRoy').innerHTML = 'Yuklanmoqda…';
+  try { XODIMLAR = await server('xodimlar', TOKEN); xodimChiz(); }
+  catch(e){ $('xodimRoy').textContent = 'Yuklab bo\'lmadi: '+(e.message||e); }
+}
+function xodimChiz(){
+  $('xodimRoy').innerHTML = XODIMLAR.map((x,i)=>`<div class="qator">
+    <div class="ism">${esc(x.ism)} <span class="rol ${x.rol}">${x.rol==='admin'?'admin':'xodim'}</span>
+      <small>${x.faol?'Faol':'⛔ O\'chirilgan'} · ${x.telegram?'Telegram ✅':'Telegram —'}</small>
+      <div class="yashirin hidden" id="pr${i}"><div class="row2"><input id="pn${i}" inputmode="numeric" maxlength="4" placeholder="Yangi PIN">
+        <button class="btn pri" onclick="xodimPin(${i})">Saqlash</button></div></div>
+    </div>
+    <button class="btn" onclick="$('pr${i}').classList.toggle('hidden')">🔑</button>
+    ${x.ism!==USER.ism?`<button class="btn ${x.faol?'xavf':''}" onclick="xodimFaol(${i})">${x.faol?'O\'chirish':'Yoqish'}</button>`:''}
+  </div>`).join('');
+}
+async function xodimAmal(d, xabar){
+  band(true);
+  try { await server('xodimSaqla', TOKEN, d); toast(xabar); await xodimYukla(); }
+  catch(e){ toast(e.message||String(e), 4000); }
+  band(false);
+}
+function xodimPin(i){
+  const p = $('pn'+i).value;
+  if (!/^\d{4}$/.test(p)) { toast('PIN 4 ta raqam bo\'lsin'); return; }
+  xodimAmal({ ism: XODIMLAR[i].ism, pin: p }, '✅ '+XODIMLAR[i].ism+' uchun yangi PIN saqlandi');
+}
+function xodimFaol(i){
+  const x = XODIMLAR[i];
+  xodimAmal({ ism: x.ism, faol: !x.faol }, x.faol ? '⛔ '+x.ism+' o\'chirildi — endi kira olmaydi' : '✅ '+x.ism+' yoqildi');
+}
+function xodimQosh(){
+  const ism=$('yIsm').value.trim(), p=$('yPin').value, rol=$('yRol').value;
+  if (!ism) { toast('Ismni kiriting'); return; }
+  if (!/^\d{4}$/.test(p)) { toast('PIN 4 ta raqam bo\'lsin'); return; }
+  xodimAmal({ ism, pin: p, rol, yangi: true }, '✅ '+ism+' qo\'shildi').then(()=>{ $('yIsm').value=''; $('yPin').value=''; });
 }
 
 const MAX_MB = 20;
