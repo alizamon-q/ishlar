@@ -101,6 +101,15 @@
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .row2>div{min-width:0}
   .row2 label{margin-top:10px}
+  .ogoh{border-radius:12px;padding:10px 12px;margin-bottom:10px;font-weight:600;font-size:15px;
+    display:flex;align-items:center;gap:8px;cursor:pointer}
+  .ogoh.bugun{background:#ffe2c7;color:#a13d00} .ogoh.otgan{background:#fde2e2;color:#b3161d}
+  .ogoh small{font-weight:500;margin-left:auto;opacity:.8}
+  .fayl{margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--chip);font-size:14px;line-height:1.5;
+    word-break:break-word}
+  .fayl small{color:var(--mut)}
+  .fayl a{color:var(--pri2);font-weight:600;text-decoration:none}
+  input[type=file]{padding:9px;font-size:14px}
   .qoldiq{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--chip);
     display:flex;justify-content:space-between;font-weight:600}
   .geo{display:flex;gap:10px;align-items:center;margin-top:8px}
@@ -146,6 +155,7 @@
     <button onclick="qulfla()">🔒</button>
   </header>
   <main>
+    <div id="ogoh"></div>
     <div class="stats" id="stats"></div>
     <input class="search" id="q" type="search" placeholder="Qidirish: obyekt, buyurtmachi, raqam…" oninput="chiz()">
     <div class="filters" id="filters"></div>
@@ -198,6 +208,13 @@
           <div><label>Kelgan sana</label><input name="kelgan" type="date"></div>
           <div><label>Bajarish muddati</label><input name="muddat" type="date"></div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="lg">Xulosa fayli</div>
+        <div class="fayl" id="faylJoriy">Fayl yuklanmagan</div>
+        <label>Tayyor xulosani tanlang (PDF, Word yoki rasm)</label>
+        <input name="fayl" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" onchange="faylTanlandi(this)">
       </div>
 
       <div class="card">
@@ -322,7 +339,7 @@ function muddatHolat(r, h){
   return { cls:'m-yashil', chap:'🟢 Muddat: '+sana, ong:k+' kun qoldi' };
 }
 
-const FILTRLAR = [['hammasi','Hammasi'],['jarayonda','Jarayonda'],['kechikkan','Muddati o\'tgan'],['qarz','Qoldiq bor'],['tugagan','Xulosa berilgan']];
+const FILTRLAR = [['hammasi','Hammasi'],['bugun','Bugun muddat'],['jarayonda','Jarayonda'],['kechikkan','Muddati o\'tgan'],['qarz','Qoldiq bor'],['tugagan','Xulosa berilgan']];
 function chiz(){
   const q = $('q').value.trim().toLowerCase();
   let jamiQ=0, jarayon=0, kech=0;
@@ -330,6 +347,11 @@ function chiz(){
   $('stats').innerHTML = `<div class="stat"><b>${DATA.length}</b><small>Jami ish</small></div>
     <div class="stat"><b>${jarayon}</b><small>Jarayonda${kech?` · <span style="color:var(--bad)">${kech} kechikkan</span>`:''}</small></div>
     <div class="stat"><b>${jamiQ?Math.round(jamiQ/1e6*10)/10+' mln':'0'}</b><small>Umumiy qoldiq</small></div>`;
+  const bugungi = DATA.filter(r=>{const h=holat(r); return !h.tugagan && h.k===0;});
+  let og = '';
+  if (bugungi.length) og += `<div class="ogoh bugun" onclick="FILTR='bugun';chiz()">🔔 Bugun muddati tugaydi: ${bugungi.length} ta ish<small>Ko'rish ›</small></div>`;
+  if (kech) og += `<div class="ogoh otgan" onclick="FILTR='kechikkan';chiz()">⚠ Muddati o'tgan: ${kech} ta ish<small>Ko'rish ›</small></div>`;
+  $('ogoh').innerHTML = og;
   $('filters').innerHTML = FILTRLAR.map(([k,t])=>`<button class="${FILTR===k?'on':''}" onclick="FILTR='${k}';chiz()">${t}</button>`).join('');
 
   const rows = DATA.filter(r=>{
@@ -338,6 +360,7 @@ function chiz(){
     if (FILTR==='kechikkan' && !h.kechikkan) return false;
     if (FILTR==='qarz' && !h.qarz) return false;
     if (FILTR==='tugagan' && !h.tugagan) return false;
+    if (FILTR==='bugun' && !(h.k===0 && !h.tugagan)) return false;
     if (!q) return true;
     return [r.n,r.obyekt,r.buyurtmachi,r.telefon,r.ariza,r.xulosa,r.shartnoma,r.izoh].join(' ').toLowerCase().includes(q);
   }).slice().reverse();
@@ -359,6 +382,7 @@ function chiz(){
       <div class="acts">
         ${tel?`<a href="tel:${tel}">📞 Qo'ng'iroq</a>`:''}
         ${r.lat&&r.lng?`<a href="https://www.google.com/maps?q=${r.lat},${r.lng}" target="_blank">🗺 Xarita</a>`:''}
+        ${r.fayl&&r.fayl.url?`<a href="${esc(r.fayl.url)}" target="_blank">📄 Xulosa</a>`:''}
         <button onclick="ochForm(${r.row})">✎ Tahrirlash</button>
       </div></div>`;
   }).join('');
@@ -379,6 +403,9 @@ function ochForm(row){
     e.row.value = ''; e.kelgan.value = bugun(); e.shSana.value = '';
     joylashuv(false);
   }
+  $('faylJoriy').innerHTML = r && r.fayl && r.fayl.url
+    ? `📄 <a href="${esc(r.fayl.url)}" target="_blank">${esc(r.fayl.nom||'Xulosa')}</a>`
+    : 'Fayl yuklanmagan';
   qoldiqHisob();
   korsat('formScr');
 }
@@ -424,12 +451,31 @@ async function saqla(){
     .forEach(k=> rec[k]=e[k].value.trim());
   rec.summa = e.summa.value.replace(/[^\d]/g,'');
   rec.tushgan = e.tushgan.value.replace(/[^\d]/g,'');
+  const fayl = e.fayl.files && e.fayl.files[0];
   band(true);
   try {
-    await server('saqla', TOKEN, rec);
-    toast('✓ Jadvalga saqlandi'); korsat('listScr'); await yangila();
-  } catch(err){ if(TOKEN) toast('Saqlanmadi: '+(err.message||err), 4000); }
+    const res = await server('saqla', TOKEN, rec);
+    if (fayl) {
+      toast('Xulosa yuklanmoqda…', 60000);
+      const b64 = await base64(fayl);
+      await server('xulosaYukla', TOKEN, res.row, fayl.name, fayl.type || '', b64);
+      toast('✓ Saqlandi, xulosa joylandi');
+    } else toast('✓ Jadvalga saqlandi');
+    korsat('listScr'); await yangila();
+  } catch(err){ if(TOKEN) toast('Saqlanmadi: '+(err.message||err), 5000); }
   band(false);
+}
+
+const MAX_MB = 20;
+function faylTanlandi(el){
+  const f = el.files && el.files[0]; if (!f) return;
+  if (f.size > MAX_MB*1024*1024) { toast(`Fayl juda katta (${MAX_MB} MB dan oshmasin)`, 4000); el.value=''; return; }
+  $('faylJoriy').innerHTML = `📎 ${esc(f.name)} <small>(${(f.size/1024/1024).toFixed(1)} MB) — “Saqlash” bosilganda yuklanadi</small>`;
+}
+function base64(file){
+  return new Promise((res, rej)=>{ const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(new Error('Faylni o\'qib bo\'lmadi'));
+    r.readAsDataURL(file); });
 }
 </script>
 </body>
