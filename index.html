@@ -159,6 +159,22 @@
   .tz .e{color:var(--bad);text-decoration:line-through;word-break:break-word}
   .tz .y{color:var(--ok);word-break:break-word}
   .tz a{color:var(--pri2)}
+  /* Rasmlar */
+  .rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+  .rgrid .r{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--chip)}
+  .rgrid .r img{width:100%;height:100%;object-fit:cover;display:block}
+  .rgrid .r .x{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;
+    background:rgba(0,0,0,.6);color:#fff;font-size:15px;line-height:26px;padding:0}
+  .rgrid .r .yangi{position:absolute;left:4px;bottom:4px;background:#1a7f4b;color:#fff;font-size:11px;
+    padding:1px 6px;border-radius:6px}
+  .kichik{font-size:12px;color:var(--mut);margin-top:6px}
+  #korish{position:fixed;inset:0;z-index:30;background:#000;display:flex;align-items:center;justify-content:center}
+  #korish img{max-width:100%;max-height:100%}
+  #korish .yop{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;width:42px;height:42px;
+    border-radius:50%;border:0;background:rgba(255,255,255,.2);color:#fff;font-size:20px}
+  #korish .mt{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;
+    color:#ddd;font-size:13px}
+  #korish .yuk{color:#fff}
   #toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#15202b;
     color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;
     max-width:90%;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none}
@@ -232,6 +248,18 @@
           <div><label>Kenglik (lat)</label><input name="lat" inputmode="decimal"></div>
           <div><label>Uzunlik (lng)</label><input name="lng" inputmode="decimal"></div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="lg">📷 Obyekt rasmlari</div>
+        <div class="rgrid" id="rasmGrid"></div>
+        <div class="row2">
+          <button type="button" class="btn keng" onclick="$('kam').click()">📷 Rasmga olish</button>
+          <button type="button" class="btn keng" onclick="$('gal').click()">🖼 Galereyadan</button>
+        </div>
+        <input id="kam" type="file" accept="image/*" capture="environment" class="hidden" onchange="rasmTanlandi(this)">
+        <input id="gal" type="file" accept="image/*" multiple class="hidden" onchange="rasmTanlandi(this)">
+        <div class="kichik">Rasmga sana, vaqt, koordinata va obyekt nomi yoziladi. “Saqlash” bosilganda yuklanadi.</div>
       </div>
 
       <div class="card">
@@ -332,6 +360,12 @@
   <main><div class="card" id="tarixRoy"></div></main>
 </section>
 
+<div id="korish" class="hidden" onclick="if(event.target===this)korishYop()">
+  <img id="korImg" alt="">
+  <div class="yuk" id="korYuk">Yuklanmoqda…</div>
+  <button class="yop" onclick="korishYop()">✕</button>
+  <div class="mt" id="korMt"></div>
+</div>
 <div id="toast"></div>
 <div id="busy" class="hidden"><div></div></div>
 
@@ -491,6 +525,7 @@ function chiz(){
     const m = muddatHolat(r, h);
     if (h.q!=null) tags.push(`<span class="tag ${h.qarz?'warn':'ok'}">${h.qarz?'Qoldiq: '+pul(h.q):'To\'langan'}</span>`);
     if (r.ariza) tags.push(`<span class="tag">Ariza № ${esc(r.ariza)}</span>`);
+    if (r.rasm) tags.push(`<span class="tag">📷 ${r.rasm}</span>`);
     const tel = String(r.telefon||'').replace(/[^\d+]/g,'');
     return `<div class="item ${m?m.cls:''}">
       <div class="top"><span class="no">${esc(r.n)}</span><span class="ttl">${esc(r.obyekt)}</span></div>
@@ -528,13 +563,18 @@ function ochForm(row){
       + (adminmi() ? `<button type="button" class="btn keng" onclick="tarixOch(${r.row})">📜 O'zgarishlar tarixi</button>` : '');
     fm.classList.remove('hidden');
   } else fm.classList.add('hidden');
+  YANGI_RASM = []; SAQLANGAN = []; rasmChiz();
+  if (r && r.rasm) rasmlarYukla(r.row);
   $('faylJoriy').innerHTML = r && r.fayl && r.fayl.url
     ? `📄 <a href="${esc(r.fayl.url)}" target="_blank">${esc(r.fayl.nom||'Xulosa')}</a>`
     : 'Fayl yuklanmagan';
   qoldiqHisob();
   korsat('formScr');
 }
-function orqaga(){ korsat('listScr'); }
+function orqaga(){
+  if (YANGI_RASM.length && !orqaga._ogoh) { orqaga._ogoh = true; toast('Yangi rasmlar hali saqlanmagan! Chiqish uchun “Bekor” ni yana bosing', 4000);
+    setTimeout(()=>orqaga._ogoh=false, 4000); return; }
+  orqaga._ogoh = false; YANGI_RASM = []; korsat('listScr'); }
 
 function pulInput(el){
   const raw = el.value.replace(/[^\d]/g,'');
@@ -586,6 +626,13 @@ async function saqla(){
       await server('xulosaYukla', TOKEN, res.row, fayl.name, fayl.type || '', b64);
       toast('✓ Saqlandi, xulosa joylandi');
     } else toast('✓ Jadvalga saqlandi');
+    for (let i = 0; i < YANGI_RASM.length; i++) {
+      toast(`📷 Rasm ${i+1}/${YANGI_RASM.length} yuklanmoqda…`, 60000);
+      const x = YANGI_RASM[i];
+      await server('rasmYukla', TOKEN, res.row, x.nom, x.katta, x.kichik);
+    }
+    if (YANGI_RASM.length) toast(`✓ Saqlandi, ${YANGI_RASM.length} ta rasm yuklandi`);
+    YANGI_RASM = [];
     korsat('listScr'); await yangila();
   } catch(err){ if(TOKEN) toast('Saqlanmadi: '+(err.message||err), 5000); }
   band(false);
@@ -699,6 +746,86 @@ function xodimQosh(){
   if (!/^\d{4}$/.test(p)) { toast('PIN 4 ta raqam bo\'lsin'); return; }
   xodimAmal({ ism, pin: p, rol, yangi: true }, '✅ '+ism+' qo\'shildi').then(()=>{ $('yIsm').value=''; $('yPin').value=''; });
 }
+
+/* ---------- Obyekt rasmlari ---------- */
+let YANGI_RASM = [], SAQLANGAN = [];
+function dmsJ(v, p, n){ v=Number(v); const a=Math.abs(v); let d=Math.floor(a), m=Math.floor((a-d)*60);
+  let s=Math.round(((a-d)*60-m)*600)/10; if(s>=60){s=0;m++;} if(m>=60){m=0;d++;}
+  return d+'°'+m+"'"+s.toFixed(1)+'"'+(v<0?n:p); }
+function hozirStr(){ const d=new Date(), q=x=>String(x).padStart(2,'0');
+  return q(d.getDate())+'.'+q(d.getMonth()+1)+'.'+d.getFullYear()+' '+q(d.getHours())+':'+q(d.getMinutes()); }
+function joriyJoy(){
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(p => res({ lat: p.coords.latitude.toFixed(6), lng: p.coords.longitude.toFixed(6) }),
+      () => res(null), { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+  });
+}
+let MUHR_JOY = null;
+function kanvas(img, max, muhr){
+  const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth*k), h = Math.round(img.naturalHeight*k);
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+  if (muhr) {
+    const e = F();
+    const j = MUHR_JOY || (e.lat.value && e.lng.value ? { lat: e.lat.value, lng: e.lng.value } : null);
+    const qator1 = hozirStr() + (j ? '   ' + dmsJ(j.lat,'N','S') + ' ' + dmsJ(j.lng,'E','W') : '');
+    const qator2 = e.obyekt.value.trim().replace(/\s+/g,' ').slice(0, 70);
+    const fs = Math.max(14, Math.round(w/45)), pad = Math.round(fs*0.5);
+    const qatorlar = qator2 ? [qator1, qator2] : [qator1];
+    const bal = qatorlar.length*(fs+pad) + pad;
+    x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(0, h-bal, w, bal);
+    x.fillStyle = '#fff'; x.font = `600 ${fs}px sans-serif`; x.textBaseline = 'top';
+    qatorlar.forEach((t,i)=> x.fillText(t, pad, h-bal+pad+i*(fs+pad), w-2*pad));
+  }
+  return c;
+}
+function rasmTayyorla(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const katta = kanvas(img, 1600, true).toDataURL('image/jpeg', 0.78);
+      const kichik = kanvas(img, 240, false).toDataURL('image/jpeg', 0.6);
+      res({ nom: 'rasm_' + hozirStr().replace(/[.: ]/g,'') + '_' + Math.random().toString(36).slice(2,6) + '.jpg',
+            katta: katta.split(',')[1], kichik });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('rasm')); };
+    img.src = url;
+  });
+}
+async function rasmTanlandi(el){
+  const fayllar = [...el.files]; el.value = '';
+  if (!fayllar.length) return;
+  band(true);
+  // rasm olingan paytdagi haqiqiy joylashuv muhrga yoziladi
+  MUHR_JOY = await joriyJoy();
+  const e = F();
+  if (MUHR_JOY && !(e.lat.value && e.lng.value)) { e.lat.value = MUHR_JOY.lat; e.lng.value = MUHR_JOY.lng; geoMatn(MUHR_JOY, 'Rasm olingan joy'); }
+  for (const f of fayllar) { try { YANGI_RASM.push(await rasmTayyorla(f)); } catch(e) { toast('Rasmni o\'qib bo\'lmadi'); } }
+  band(false); rasmChiz();
+}
+function rasmChiz(){
+  $('rasmGrid').innerHTML =
+    SAQLANGAN.map((x,i)=>`<div class="r" onclick="rasmKor(${i})"><img src="${esc(x.kichik)}" alt=""></div>`).join('') +
+    YANGI_RASM.map((x,i)=>`<div class="r"><img src="${x.kichik}" alt=""><span class="yangi">yangi</span>
+      <button type="button" class="x" onclick="YANGI_RASM.splice(${i},1);rasmChiz()">✕</button></div>`).join('');
+}
+async function rasmlarYukla(row){
+  $('rasmGrid').innerHTML = '<div class="kichik">Rasmlar yuklanmoqda…</div>';
+  try { SAQLANGAN = await server('rasmlar', TOKEN, row); } catch(e) { SAQLANGAN = []; }
+  rasmChiz();
+}
+async function rasmKor(i){
+  const x = SAQLANGAN[i]; if (!x) return;
+  $('korImg').src = x.kichik; $('korYuk').textContent = 'Yuklanmoqda…';
+  $('korMt').textContent = `${x.vaqt} · 👤 ${x.kim}   (${i+1}/${SAQLANGAN.length})`;
+  $('korish').classList.remove('hidden');
+  try { const b = await server('rasmOl', TOKEN, x.id); $('korImg').src = 'data:image/jpeg;base64,' + b; $('korYuk').textContent=''; }
+  catch(e) { $('korYuk').textContent = 'Yuklab bo\'lmadi'; }
+}
+function korishYop(){ $('korish').classList.add('hidden'); $('korImg').src=''; }
 
 const MAX_MB = 20;
 function faylTanlandi(el){
